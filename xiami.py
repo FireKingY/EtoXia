@@ -8,7 +8,8 @@ import logging
 logger = logging.getLogger("xiamiLoger")
 myheader = {
         'host' : 'www.xiami.com',
-        'User-Agent' : r'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/63.0.3239.108 Safari/537.36'
+        'User-Agent' : r'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/63.0.3239.108 Safari/537.36',
+        'Refer' : 'http://www.xiami.com'
         }
 
 def login(session=requests.session()):
@@ -73,22 +74,14 @@ def login(session=requests.session()):
 
     return session
 
-def creat_list(session):
+def create_collect(session, collect_name):
     c_url = 'http://www.xiami.com/collect/createstep1'
     header = {
         'Host': 'www.xiami.com',
-        'Connection': 'keep-alive',
-        'Content-Length': '304',
-        'Cache-Control': 'max-age=0',
-        'Origin': 'http://www.xiami.com',
-        'Upgrade-Insecure-Requests': '1',
-        'Content-Type': 'application/x-www-form-urlencoded',
         'User-Agent':' Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/63.0.3239.108 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
         'Referer': 'http://www.xiami.com/collect/createstep1s',
-        'Accept-Encoding': 'gzip, deflate',
-        'Accept-Language': 'zh',
         }
+
     #get data
     try:
         r = session.get(c_url, headers = myheader)
@@ -103,12 +96,12 @@ def creat_list(session):
     _xiamitoken =re.findall(r'(?<=value=").*(?=" name="_xiamitoken")', text)[0]
 
     mydata = {            
-        'name':'title-py',
+        'name': collect_name,
         'type':'0',
         'public':'1',
-        'des':'list',
-        'tags':'tag1;tag2',
-        'submit4':'%E4%BF%9D%E5%AD%98',
+        'des':'',
+        'tags':'',
+        'submit4':'保存',
         '_xiamitoken': _xiamitoken,
         'imgx':'0',
         'imgy':'0',
@@ -130,8 +123,48 @@ def creat_list(session):
     except Exception as e:
         logger.warning(e)
         raise e
+
+    collectid = re.findall(r"(?<=var cid = ').*(?=';)", r.text)
+    return collectid
     
-    return [mydata, r, text]
+
+def add_music_to_collect(session, musicid, collectid):
+    url = 'http://www.xiami.com/song/collect'
+    collect_url = 'http://www.xiami.com/collect/' + collectid
+    music_url = 'http://www.xiami.com/song/' + musicid
+    header = {
+        'Host': 'www.xiami.com',
+        'User-Agent':' Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/63.0.3239.108 Safari/537.36',
+        'Referer': music_url,
+        }
+
+    #get data
+    try:
+        r = session.get(music_url,headers = myheader)
+        r.raise_for_status()
+        r.encoding = r.apparent_encoding
+    except Exception as e:
+        logger.warn(e)
+        raise e
+
+    _xiamitoken =re.findall(r"(?<=_xiamitoken = ').*(?=';)", r.text)[0]
+    mydata = {
+        '_xiamitoken' : _xiamitoken,
+        'id' : musicid,
+        'list_id' : collectid,
+        'tag_name' : '',
+        'description' : '',
+        'submit' : '保存',
+        }
+
+    #try add
+    try:
+        r = session.post(url, headers = header, data = mydata)
+        r.raise_for_status()
+    except Exception as e:
+        logger.warn(e)
+        raise e
+    return r
 
 if __name__ == "__main__":
     login()
