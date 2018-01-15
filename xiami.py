@@ -4,7 +4,12 @@ import os
 import requests
 import json
 import logging
+from lxml import etree
 
+logging.basicConfig(
+     filename='xiami.log',
+     level=logging.INFO,
+     format='%(levelname)s:%(asctime)s:%(message)s')
 logger = logging.getLogger("xiamiLoger")
 myheader = {
         'host' : 'www.xiami.com',
@@ -13,6 +18,8 @@ myheader = {
         }
 
 def login(session=requests.session()):
+    logger.info(': try login')
+
     gen_qr_url = 'https://login.xiami.com/member/generate-qrcodelogin?from=xiami&size=150&t='
     check_url_head = 'https://login.xiami.com/member/qrcodelogin?lgToken='
     check_url_tail = '&defaulturl=http%3A%2F%2Fwww.xiami.com%2F&t='
@@ -75,6 +82,7 @@ def login(session=requests.session()):
     return session
 
 def create_collect(session, collect_name):
+    logger.info(': try creat collect' + collect_name )
     c_url = 'http://www.xiami.com/collect/createstep1'
     header = {
         'Host': 'www.xiami.com',
@@ -124,11 +132,13 @@ def create_collect(session, collect_name):
         logger.warning(e)
         raise e
 
-    collectid = re.findall(r"(?<=var cid = ').*(?=';)", r.text)
+    collectid = re.findall(r"(?<=var cid = ').*(?=';)", r.text)[0]
     return collectid
     
 
 def add_music_to_collect(session, musicid, collectid):
+    logger.info(':try add music' + musicid + '-->' +collectid)
+
     url = 'http://www.xiami.com/song/collect'
     collect_url = 'http://www.xiami.com/collect/' + collectid
     music_url = 'http://www.xiami.com/song/' + musicid
@@ -166,5 +176,35 @@ def add_music_to_collect(session, musicid, collectid):
         raise e
     return r
 
+def search(music_name):
+    url = 'http://www.xiami.com/search?key=' + music_name + '&pos=1'
+     
+    try:
+        r = requests.get(url, headers = myheader)
+        r.raise_for_status()
+        r.encoding = r.apparent_encoding 
+    except Exception as e:
+        logger.warn(e)
+        raise e
+    res_list = []
+    res = {}
+    html = etree.HTML(r.text)
+    for td in html.xpath('//td[@class="song_name"]'):
+        try:
+            res['title'] = td.xpath('a[@target]/@title')[0]
+            res['artist'] = td.xpath('../td[@class="song_artist"]/a[@target]/@title')[0]
+            res['id'] = re.findall(r"(?<=')\d*(?=')", td.xpath('../td[@class="song_act"]//a[@class="song_toclt"]/@onclick')[0])[0]
+            res_list.append(res)
+            # res['link'] = td.xpath('a[@target]/@href')[0]
+        except Exception as e:
+            raise e
+        
+    return res_list
+
+def search_music(music):
+    logger.info('try search ' + music['title'])
+    res_list = search(music['title'])
+    return res_list[0]
+
 if __name__ == "__main__":
-    login()
+    print(search('ther'))
