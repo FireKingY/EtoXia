@@ -177,8 +177,8 @@ def add_music_to_collect(session, musicid, collectid):
     return r
 
 def search(music_name):
-    url = 'http://www.xiami.com/search?key=' + music_name + '&pos=1'
-     
+    url = 'http://www.xiami.com/search?key=' + music_name 
+
     try:
         r = requests.get(url, headers = myheader)
         r.raise_for_status()
@@ -186,6 +186,11 @@ def search(music_name):
     except Exception as e:
         logger.warn(e)
         raise e
+
+    # with open('sr.html', 'w') as f:
+        # f.write(r.text)
+
+
     res_list = []
     res = {}
     html = etree.HTML(r.text)
@@ -194,7 +199,9 @@ def search(music_name):
             res['title'] = td.xpath('a[@target]/@title')[0]
             res['artist'] = td.xpath('../td[@class="song_artist"]/a[@target]/@title')[0]
             res['id'] = re.findall(r"(?<=')\d*(?=')", td.xpath('../td[@class="song_act"]//a[@class="song_toclt"]/@onclick')[0])[0]
-            res_list.append(res)
+            res_list.append(res.copy())
+            # print(res)
+            # print(res_list)
             # res['link'] = td.xpath('a[@target]/@href')[0]
         except Exception as e:
             raise e
